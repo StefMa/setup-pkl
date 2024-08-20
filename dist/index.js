@@ -32876,6 +32876,8 @@ const gh = __importStar(__nccwpck_require__(5438));
 const tc = __importStar(__nccwpck_require__(7784));
 const node_os_1 = __importDefault(__nccwpck_require__(612));
 const promises_1 = __nccwpck_require__(3292);
+const path = __importStar(__nccwpck_require__(1017));
+const io = __importStar(__nccwpck_require__(7436));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -32909,7 +32911,15 @@ async function run() {
         const pklBinaryPath = await tc.downloadTool(asset.data.browser_download_url);
         const permissionsMode = 0o711;
         await (0, promises_1.chmod)(pklBinaryPath, permissionsMode);
-        const cachedPath = await tc.cacheFile(pklBinaryPath, 'pkl', 'pkl', pklVersion);
+        const pklCacheDir = path.join(process.env['RUNNER_TEMP'], 'tmp_pkl');
+        await io.mkdirP(pklCacheDir);
+        if (node_os_1.default.platform() === 'win32') {
+            await io.cp(pklBinaryPath, path.join(pklCacheDir, 'pkl.exe'));
+        }
+        else {
+            await io.cp(pklBinaryPath, path.join(pklCacheDir, 'pkl'));
+        }
+        const cachedPath = await tc.cacheDir(pklCacheDir, 'pkl', pklVersion);
         core.debug(`Wrote pkl to cached path: ${cachedPath} with permission mode ${permissionsMode}`);
         core.addPath(cachedPath);
     }

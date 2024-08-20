@@ -3,6 +3,8 @@ import * as gh from '@actions/github'
 import * as tc from '@actions/tool-cache'
 import os from 'node:os'
 import { chmod } from 'fs/promises'
+import * as path from 'path'
+import * as io from '@actions/io'
 
 /**
  * The main function for the action.
@@ -45,12 +47,14 @@ export async function run(): Promise<void> {
     const pklBinaryPath = await tc.downloadTool(asset.data.browser_download_url)
     const permissionsMode = 0o711
     await chmod(pklBinaryPath, permissionsMode)
-    const cachedPath = await tc.cacheFile(
-      pklBinaryPath,
-      'pkl',
-      'pkl',
-      pklVersion
-    )
+    const pklCacheDir = path.join(process.env['RUNNER_TEMP']!!, 'tmp_pkl')
+    await io.mkdirP(pklCacheDir)
+    if (os.platform() === 'win32') {
+      await io.cp(pklBinaryPath, path.join(pklCacheDir, 'pkl.exe'))
+    } else {
+      await io.cp(pklBinaryPath, path.join(pklCacheDir, 'pkl'))
+    }
+    const cachedPath = await tc.cacheDir(pklCacheDir, 'pkl', pklVersion)
     core.debug(
       `Wrote pkl to cached path: ${cachedPath} with permission mode ${permissionsMode}`
     )
